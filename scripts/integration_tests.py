@@ -9,7 +9,7 @@ import zlib
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
-parser.add_argument('--exe', default=str(ROOT / 'build/Release/fornaio_cli.exe'))
+parser.add_argument('--exe', default=str(ROOT / 'dist/Fornaio/fornaio_cli.exe'))
 parser.add_argument('--clean-env', action='store_true', help='Exclude development tool/runtime paths')
 args = parser.parse_args()
 OUT = ROOT / 'artifacts/integration'

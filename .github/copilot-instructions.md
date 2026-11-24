@@ -9,4 +9,4 @@ This repo has a local knowledge graph of the code in `graphify-out/graph.json` (
   - `graphify affected "<Symbol>"` - what depends on a symbol
 - Then read the specific files/lines the graph points to. The graph locates code; it does not replace reading it before editing.
 - If `graphify-out/graph.json` is missing or the command fails, run `graphify update .` (local, no LLM) and retry, or fall back to normal search.
-- The graph excludes `third_party/`, `build/`, `artifacts/` (see `.graphifyignore`).
+- The graph excludes `third_party/`, `.build/`, `build/`, `artifacts/` (see `.graphifyignore`).

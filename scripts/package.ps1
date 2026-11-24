@@ -1,23 +1,20 @@
-param([string]$BuildDirectory = 'build\Release')
+param([switch]$StageOnly)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $projectRoot
 $destination = Join-Path $projectRoot 'dist\Fornaio'
-New-Item -ItemType Directory -Force -Path $destination | Out-Null
-foreach ($name in @('Fornaio.exe','fornaio_cli.exe','bake.ptx','transfer.ptx')) { Copy-Item -LiteralPath "$BuildDirectory\$name" -Destination $destination -Force }
-Get-ChildItem -LiteralPath $BuildDirectory -Filter '*.dll' | Where-Object Name -NotIn @('dxcompiler.dll','dxil.dll','Qt6Test.dll') | Copy-Item -Destination $destination -Force
-foreach ($name in @('platforms','imageformats','styles','generic','networkinformation','tls')) {
-    if (Test-Path "$BuildDirectory\$name") { Copy-Item -LiteralPath "$BuildDirectory\$name" -Destination $destination -Recurse -Force }
+foreach ($name in @('Fornaio.exe','fornaio_cli.exe','bake.ptx','transfer.ptx')) {
+    if (-not (Test-Path -LiteralPath "$destination\$name" -PathType Leaf)) {
+        throw "Missing portable build file: $name. Run scripts\build.ps1 first."
+    }
 }
-$vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-$vsRoot = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-$redist = Get-ChildItem -LiteralPath (Join-Path $vsRoot 'VC\Redist\MSVC') -Directory | Where-Object Name -Match '^14\.' | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
-$crt = Join-Path $redist.FullName 'x64\Microsoft.VC143.CRT'
-Get-ChildItem -LiteralPath $crt -Filter '*.dll' | Copy-Item -Destination $destination -Force
 foreach ($name in @('README.md','THIRD_PARTY_NOTICES.md','VALIDATION.md')) { Copy-Item -LiteralPath $name -Destination $destination -Force }
 New-Item -ItemType Directory -Force -Path "$destination\ai" | Out-Null
-foreach ($name in @('manifest.json','AI_NOTICES.md','PROJECTION_BLENDING.md','SMART_FILL.md','ai_worker.py','ai_extract.ps1')) {
-    Copy-Item -LiteralPath "$BuildDirectory\ai\$name" -Destination "$destination\ai" -Force
+foreach ($name in @('manifest.json','AI_NOTICES.md','PROJECTION_BLENDING.md','SMART_FILL.md')) {
+    Copy-Item -LiteralPath "ai\$name" -Destination "$destination\ai" -Force
+}
+foreach ($name in @('ai_worker.py','ai_extract.ps1')) {
+    Copy-Item -LiteralPath "scripts\$name" -Destination "$destination\ai" -Force
 }
 Copy-Item -LiteralPath samples -Destination $destination -Recurse -Force
 Copy-Item -LiteralPath licenses -Destination $destination -Recurse -Force
@@ -28,6 +25,7 @@ foreach ($file in Get-ChildItem -LiteralPath $destination -File -Recurse) {
         throw "Large/optional AI component must not be packaged: $($file.FullName)"
     }
 }
+if ($StageOnly) { return }
 Compress-Archive -Path $destination -DestinationPath dist\Fornaio-Windows-x64.zip -Force
 # Include only source and required third-party files, without development environments or repository metadata.
 $sourceRoot = Join-Path $projectRoot 'dist\Fornaio-Source'
@@ -50,4 +48,6 @@ foreach ($cache in Get-ChildItem -LiteralPath $sourceRoot -Directory -Filter '__
     Remove-Item -LiteralPath $cachePath -Recurse -Force
 }
 Compress-Archive -Path $sourceRoot -DestinationPath dist\Fornaio-Source.zip -Force
-Get-FileHash dist\Fornaio-Windows-x64.zip,dist\Fornaio-Source.zip -Algorithm SHA256 | Format-Table -AutoSize
+$archives = Get-FileHash dist\Fornaio-Windows-x64.zip,dist\Fornaio-Source.zip -Algorithm SHA256
+$archives | ForEach-Object { "$($_.Hash.ToLowerInvariant())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content -LiteralPath dist\SHA256SUMS.txt -Encoding ascii
+$archives | Format-Table -AutoSize

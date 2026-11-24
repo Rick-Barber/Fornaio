@@ -132,14 +132,16 @@ python -m venv .build-tools
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1
 ```
 
-The build script discovers Visual Studio and its CMake, builds the CUDA program to PTX, builds Release binaries, and deploys Qt DLLs beside the executables. Set `CUDA_PATH` if CUDA is not found automatically. The GUI loads `bake.ptx` from its own directory, independent of the working directory.
+Every build updates **`dist\Fornaio\Fornaio.exe`**, the single application location, with its CLI, PTX, Qt DLLs, and portable resources. There is no separate packaging step needed to run the latest build. CMake intermediates and development tests stay in the hidden `.build` folder. The old `build\Release` application location is no longer used.
+
+The build script discovers Visual Studio and its CMake and builds Release binaries. Set `CUDA_PATH` if CUDA is not found automatically. Use `scripts/build.ps1 -Jobs 1` to build without parallel MSBuild workers. The GUI loads `bake.ptx` from its own directory, independent of the working directory. `scripts/build.ps1 -Package` also refreshes the application/source ZIPs and their checksums; `scripts/package.ps1` archives the current portable build without creating another executable location.
 
 ```powershell
-.\build\Release\fornaio_cli.exe --self-test --artifacts artifacts/tests
-.\build\Release\fornaio_ui_tests.exe
-.\build\Release\fornaio_ai_tests.exe
-.\build\Release\fornaio_projection_tests.exe
-.\build\Release\fornaio_smart_fill_tests.exe
+.\dist\Fornaio\fornaio_cli.exe --self-test --artifacts artifacts/tests
+.\.build\Release\fornaio_ui_tests.exe
+.\.build\Release\fornaio_ai_tests.exe
+.\.build\Release\fornaio_projection_tests.exe
+.\.build\Release\fornaio_smart_fill_tests.exe
 python scripts/integration_tests.py
 powershell -ExecutionPolicy Bypass -File scripts/package.ps1
 ```

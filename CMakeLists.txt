@@ -37,6 +37,14 @@ add_executable(Fornaio WIN32 src/main.cpp ${UI_SOURCES} src/resources/fornaio.rc
 target_link_libraries(Fornaio PRIVATE baker Qt6::Widgets Qt6::Network Qt6::OpenGLWidgets Qt6::OpenGL)
 add_executable(fornaio_cli src/cli.cpp src/transfer_tests.cpp src/uv2_tests.cpp src/resources/fornaio.rc)
 target_link_libraries(fornaio_cli PRIVATE baker)
+# The portable folder is the only application output, including for direct CMake builds.
+# Keep linker symbols/import libraries with the other intermediate build files.
+foreach(t Fornaio fornaio_cli)
+ set_target_properties(${t} PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_CURRENT_SOURCE_DIR}/dist/Fornaio>"
+  ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib/$<CONFIG>"
+  PDB_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/symbols/$<CONFIG>")
+endforeach()
 enable_testing()
 add_test(NAME core_and_gpu COMMAND fornaio_cli --self-test)
 add_executable(fornaio_ui_tests tests/ui_tests.cpp ${UI_SOURCES})
