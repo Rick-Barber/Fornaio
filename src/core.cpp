@@ -179,7 +179,8 @@ Mask loadMask(const QString &path, int channel, bool invert) {
 void checkSettings(const Settings &s) {
     if (s.resolution < 1 || s.resolution > 8192 || s.rays < 1 || s.rays > 65536 || s.ss < 1 || s.ss > 4 ||
         s.padding < 0 || s.padding > 128 || !std::isfinite(s.distance) || s.distance < 0 ||
-        !std::isfinite(s.bias) || s.bias < 0 || (s.bits != 8 && s.bits != 16))
+        !std::isfinite(s.bias) || s.bias < 0 || (s.bits != 8 && s.bits != 16) ||
+        !std::isfinite(s.maxDarkness) || s.maxDarkness < 0 || s.maxDarkness > 1)
         fail("Invalid bake settings.");
 }
 // Positive intersection area detects overlaps without rejecting shared edges.
@@ -500,7 +501,7 @@ Result bakeReference(const Scene &scene, const Mask &mask, const Settings &s) {
                     }
                 }
             if (weight > 0)
-                r.pixels[pixel] = sum / weight;
+                r.pixels[pixel] = std::max(1 - s.maxDarkness, sum / weight);
         }
     padResult(r, s.padding);
     return r;

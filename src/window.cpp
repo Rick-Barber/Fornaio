@@ -223,15 +223,25 @@ Window::Window() {
     bias_->setSingleStep(.00001);
     bias_->setSpecialValueText("Automatic");
     bias_->setToolTip("Offset in model units. Automatic uses one millionth of the bounding-box diagonal.");
+    maxDarkness_ = new ScrollDoubleSpinBox;
+    maxDarkness_->setRange(0, 100);
+    maxDarkness_->setDecimals(1);
+    maxDarkness_->setSingleStep(5);
+    maxDarkness_->setSuffix(" %");
+    maxDarkness_->setValue(100);
+    maxDarkness_->setToolTip("Limits how dark the baked AO can get. 100% allows black, 50% keeps AO at or "
+                             "above 0.5 gray, and 0% outputs white. Lighter values are unchanged. "
+                             "Bake again to update the preview and export.");
     settingsForm->addRow("Resolution", resolution_);
     settingsForm->addRow("Rays / sample", rays_);
     settingsForm->addRow("Subpixel samples", ss_);
     settingsForm->addRow("Max distance", distance_);
     settingsForm->addRow("Ray bias", bias_);
+    settingsForm->addRow("Max darkness", maxDarkness_);
     settingsForm->addRow("Island padding", padding_);
     settingsForm->addRow("PNG output", bits_);
     controls->addLayout(settingsForm);
-    auto note = new QLabel("Front-side AO · two-sided occluders\nWhite = unoccluded · black = occluded\nNo "
+    auto note = new QLabel("Front-side AO · two-sided occluders\nWhite = unoccluded · darker = occluded\nNo "
                            "denoising · one shared opacity mask");
     note->setStyleSheet("color:#97a9be;");
     controls->addWidget(note);
@@ -376,7 +386,7 @@ Window::Window() {
         connect(c, &QCheckBox::toggled, this, [this] { refresh(); });
     for (auto c : {rays_, padding_})
         connect(c, &QSpinBox::valueChanged, this, [this] { refresh(); });
-    for (auto c : {distance_, bias_})
+    for (auto c : {distance_, bias_, maxDarkness_})
         connect(c, &QDoubleSpinBox::valueChanged, this, [this] { refresh(); });
     auto tick = new QTimer(this);
     connect(tick, &QTimer::timeout, this, [this] {
@@ -411,6 +421,7 @@ Settings Window::settings() const {
     s.averageOverlaps = averageOverlaps_->isChecked();
     s.distance = (float)distance_->value();
     s.bias = (float)bias_->value();
+    s.maxDarkness = (float)(maxDarkness_->value() / 100);
     return s;
 }
 void Window::showError(const QString &text) {
@@ -847,6 +858,7 @@ void Window::saveSettings() {
     q.setValue("bits", s.bits);
     q.setValue("distance", s.distance);
     q.setValue("bias", s.bias);
+    q.setValue("maxDarkness", s.maxDarkness);
     q.setValue("invert", s.invert);
     q.setValue("flip", s.flip);
     q.setValue("repeat", s.repeat);
@@ -872,6 +884,7 @@ void Window::restoreSettings() {
     bits_->setCurrentIndex(q.value("bits", 16).toInt() == 16 ? 0 : 1);
     distance_->setValue(q.value("distance", 0).toDouble());
     bias_->setValue(q.value("bias", 0).toDouble());
+    maxDarkness_->setValue(q.value("maxDarkness", 1).toDouble() * 100);
     invert_->setChecked(q.value("invert", false).toBool());
     flip_->setChecked(q.value("flip", false).toBool());
     repeat_->setChecked(q.value("repeat", false).toBool());

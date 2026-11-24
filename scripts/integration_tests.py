@@ -128,6 +128,21 @@ assert max(abs(a-b) for a,b in zip(gv,cv))<=2,'Opaque occluder GPU/CPU mismatch'
 assert min(gv)<6553,'Opaque occluder did not darken the hair'
 print('PASS: UV-less occluder import, opaque casting, and GPU/CPU parity.')
 
+for reference in [[], ['--reference']]:
+    for darkness in [0, 0.5, 1]:
+        path = OUT / f'max_darkness_{darkness}_{bool(reference)}.png'
+        report = json.loads(run(*head_args, *reference, '--max-darkness', darkness, '--out', path).stdout)
+        assert report['max_darkness'] == darkness
+        _, raw = png(path)
+        values = [struct.unpack('>H', raw[y*65+1+x*2:y*65+3+x*2])[0] for y in range(32) for x in range(32)]
+        baseline = cv if reference else gv
+        expected = [max(int((1 - darkness) * 65535 + 0.5), v) for v in baseline]
+        assert max(abs(a-b) for a,b in zip(values, expected)) <= 1, 'Maximum darkness output differs'
+for invalid in ['-0.1', '1.1', 'nan', 'inf', 'invalid']:
+    failure = run(*head_args, '--max-darkness', invalid, '--out', OUT/'invalid_darkness.png', ok=False)
+    assert 'Invalid' in failure.stderr
+print('PASS: Maximum AO darkness limits CPU/GPU output and rejects invalid values.')
+
 # UV2 generation: the existing (overlapping) UV2 of the stacked cards is replaced by a packed, strictly
 # non-overlapping layout that bakes, with and without island rotation.
 for rotate in [[], ['--uv-rotate']]:

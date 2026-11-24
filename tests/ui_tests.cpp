@@ -55,8 +55,9 @@ class UiTests : public QObject {
         w.inputs_->setMinimumHeight(1800);
         QTest::qWait(50);
         QVERIFY(scroll->verticalScrollBar()->maximum() > 0);
-        QList<QWidget *> controls{w.maskUV_, w.aoUV_,  w.channel_,  w.resolution_, w.ss_,       w.bits_,
-                                  w.rays_,   w.padding_, w.distance_, w.bias_,      w.uvSpacing_};
+        QList<QWidget *> controls{w.maskUV_,   w.aoUV_, w.channel_,     w.resolution_,
+                                  w.ss_,       w.bits_, w.rays_,        w.padding_,
+                                  w.distance_, w.bias_, w.maxDarkness_, w.uvSpacing_};
         for (auto control : controls) {
             scroll->ensureWidgetVisible(control);
             control->setFocus();
@@ -108,6 +109,27 @@ class UiTests : public QObject {
         QVERIFY(w.export_->isEnabled());
         QVERIFY(w.exportTexture_->isEnabled());
         QVERIFY(w.status_->text().contains("still available"));
+    }
+    void maximumDarknessPersistsAndMarksBakeStale() {
+        Window w;
+        QCOMPARE(w.maxDarkness_->value(), 100.0);
+        QCOMPARE(w.settings().maxDarkness, 1.f);
+        setup(w);
+        const auto original = w.result_;
+        w.maxDarkness_->setValue(50);
+        QCOMPARE(w.settings().maxDarkness, .5f);
+        QCOMPARE(QSettings().value("maxDarkness").toFloat(), .5f);
+        QVERIFY(w.resultStale_);
+        QCOMPARE(w.result_.get(), original.get());
+        QCOMPARE(w.bakedSettings_.maxDarkness, 1.f);
+        QVERIFY(w.export_->isEnabled());
+        Window restored;
+        QCOMPARE(restored.maxDarkness_->value(), 50.0);
+        QCOMPARE(restored.settings().maxDarkness, .5f);
+        w.maxDarkness_->setValue(0);
+        QCOMPARE(w.settings().maxDarkness, 0.f);
+        w.maxDarkness_->setValue(100);
+        QCOMPARE(w.settings().maxDarkness, 1.f);
     }
     void exportingHoldsResultAcrossNativeDialogEventLoop() {
         Window w;

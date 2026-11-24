@@ -33,6 +33,18 @@ static void tests(const QString &dir) {
     s.padding = 0;
     s.aoUV = 1;
     s.averageOverlaps = false;
+    require(s.maxDarkness == 1, "Default maximum darkness should allow black");
+    for (float value : {-.1f, 1.1f, NAN, INFINITY}) {
+        Settings invalid = s;
+        invalid.maxDarkness = value;
+        bool rejected = false;
+        try {
+            checkSettings(invalid);
+        } catch (const std::exception &) {
+            rejected = true;
+        }
+        require(rejected, "Invalid maximum darkness was accepted");
+    }
     Scene scene = testCards();
     std::atomic_bool cancel{false};
     require(validate(scene, s).ok(), "Unique UVs incorrectly rejected");
@@ -180,6 +192,48 @@ static void tests(const QString &dir) {
         if (a == 1)
             require(*std::min_element(gpu.pixels.begin(), gpu.pixels.end()) < .2f,
                     "Opaque cards do not occlude");
+        if (a == .5f) {
+            // Check the floor after coverage normalization, including the padded island borders.
+            auto paddedGpu = gpu, paddedCpu = cpu;
+            padResult(paddedGpu, 2);
+            padResult(paddedCpu, 2);
+            for (float darkness : {.5f, 0.f}) {
+                Settings limited = s;
+                limited.maxDarkness = darkness;
+                limited.padding = 2;
+                auto lightGpu = bakeGpu(scene, m, limited, cancel);
+                auto lightCpu = bakeReference(scene, m, limited);
+                for (size_t i = 0; i < lightGpu.pixels.size(); ++i) {
+                    require(fabs(lightGpu.pixels[i] - std::max(1 - darkness, paddedGpu.pixels[i])) < 1e-6f,
+                            "GPU maximum darkness changed lighter values or missed the floor/padding");
+                    require(fabs(lightCpu.pixels[i] - std::max(1 - darkness, paddedCpu.pixels[i])) < 1e-6f,
+                            "CPU maximum darkness changed lighter values or missed the floor/padding");
+                    require(fabs(lightGpu.pixels[i] - lightCpu.pixels[i]) < .015f,
+                            "Maximum darkness GPU/CPU mismatch");
+                }
+                if (darkness == .5f) {
+                    require(*std::min_element(lightGpu.pixels.begin(), lightGpu.pixels.end()) == .5f,
+                            "Maximum darkness did not lighten occluded pixels");
+                    auto preview = resultImage(lightGpu);
+                    for (int bits : {8, 16}) {
+                        auto path = dir + QString("/max_darkness_%1.png").arg(bits);
+                        savePng(lightGpu, path, bits);
+                        auto image = QImage(path).convertToFormat(QImage::Format_RGBA64);
+                        require(!image.isNull(), "Maximum darkness PNG cannot be read");
+                        for (int y = 0; y < image.height(); ++y)
+                            for (int x = 0; x < image.width(); ++x) {
+                                float value = lightGpu.pixels[y * image.width() + x];
+                                int expected = (int)std::lround(value * (bits == 16 ? 65535 : 255));
+                                require(image.pixelColor(x, y).rgba64().red() ==
+                                            expected * (bits == 16 ? 1 : 257),
+                                        "PNG did not preserve the maximum darkness result");
+                                require(preview.pixelColor(x, y).red() == (int)std::lround(value * 255),
+                                        "Preview did not preserve the maximum darkness result");
+                            }
+                    }
+                }
+            }
+        }
         savePng(gpu, dir + QString("/mask_%1.png").arg(a), 16);
         comparisons.append(QJsonObject{
             {"opacity", a}, {"max_error", maxError}, {"mean_error", mean}, {"seconds", gpu.seconds}});
@@ -298,7 +352,8 @@ static void tests(const QString &dir) {
         {"comparisons", comparisons},
         {"tests",
          "UV validation, transmission, masks, flip/repeat, independent UVs, front-side normals, grazing "
-         "normals, distance, self-intersections, cancellation, padding, lossless 16-bit PNG, texture transfer"}};
+         "normals, distance, maximum darkness, self-intersections, cancellation, padding, lossless 16-bit "
+         "PNG, texture transfer"}};
     transferTests(dir, report);
     uv2Tests(dir, report);
     QFile f(dir + "/tests.json");
@@ -336,6 +391,7 @@ int main(int argc, char **argv) {
              {"strict-uv", "Reject overlapping AO UVs instead of averaging their AO."},
              {"distance", "Maximum distance, 0 = unlimited.", "units", "0"},
              {"bias", "Ray bias, 0 = automatic.", "units", "0"},
+             {"max-darkness", "Maximum AO darkness (0–1): 1 allows black, 0 outputs white.", "fraction", "1"},
              {"reference", "Use slow CPU reference for small validation fixtures."},
              {"transfer", "Run a texture transfer job (JSON saved from the Texture Transfer tab).", "job"},
              {"overwrite", "Allow a transfer job to replace existing output files."},
@@ -486,6 +542,7 @@ int main(int argc, char **argv) {
         s.maskUV = integer("mask-uv") - 1;
         s.distance = number("distance");
         s.bias = number("bias");
+        s.maxDarkness = number("max-darkness");
         s.flip = p.isSet("flip");
         s.repeat = p.isSet("repeat");
         s.invert = p.isSet("invert");
@@ -523,6 +580,7 @@ int main(int argc, char **argv) {
             {"resolution", s.resolution},       {"rays_per_sample", s.rays},
             {"samples_per_pixel", s.ss * s.ss}, {"triangles", (int)scene.tris.size()}};
         obj["occluder_triangles"] = scene.occluder ? (int)scene.occluder->tris.size() : 0;
+        obj["max_darkness"] = s.maxDarkness;
         std::cout << QJsonDocument(obj).toJson().constData();
         return 0;
     } catch (const std::exception &e) {

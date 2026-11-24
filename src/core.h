@@ -29,6 +29,7 @@ struct Settings {
     int resolution = 2048, rays = 256, ss = 2, padding = 8, bits = 16, maskUV = 0, aoUV = 0, channel = 0;
     bool invert = false, flip = false, repeat = false, averageOverlaps = true;
     float distance = 0, bias = 0;
+    float maxDarkness = 1; // 0 = white only, 1 = allow black; minimum AO is 1 - maxDarkness.
 };
 struct Mask {
     int w = 0, h = 0;

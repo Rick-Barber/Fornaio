@@ -264,7 +264,8 @@ Result bakeGpu(const Scene &scene, const Mask &mask, const Settings &s, std::ato
         if (owner == 0x7f7f7f7f)
             owner = -1;
     for (size_t i = 0; i < pixels; i++)
-        result.pixels[i] = data[i].weight > 0 ? clamp01(data[i].sum / data[i].weight) : 1;
+        result.pixels[i] =
+            data[i].weight > 0 ? std::max(1 - s.maxDarkness, clamp01(data[i].sum / data[i].weight)) : 1;
     padResult(result, s.padding, &cancel);
     result.seconds = clock.elapsed() / 1000.;
     result.device = props.name;

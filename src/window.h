@@ -51,7 +51,7 @@ class Window : public QMainWindow {
     QWidget *inputs_;
     QComboBox *maskUV_, *aoUV_, *channel_, *resolution_, *ss_, *bits_, *mode_;
     QSpinBox *rays_, *padding_;
-    QDoubleSpinBox *distance_, *bias_;
+    QDoubleSpinBox *distance_, *bias_, *maxDarkness_;
     QCheckBox *invert_, *flip_, *repeat_, *averageOverlaps_;
     QLabel *geometryLabel_, *maskLabel_, *validation_, *status_, *elapsed_;
     QLabel *occluderLabel_;
