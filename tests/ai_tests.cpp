@@ -3190,7 +3190,7 @@ class AiTests : public QObject {
     }
     void realCloudGenerationSmoke() {
         // One real GPT Image 2 call through the panel (Codex or the API). Opt-in: it uses the plan's image limits.
-        if (qEnvironmentVariableIsEmpty("FORNAIO_REAL_GPT"))
+        if (qEnvironmentVariable("FORNAIO_REAL_GPT") != "1")
             QSKIP("Set FORNAIO_REAL_GPT=1 to run one real GPT Image 2 generation");
         AiPanel p;
         p.model_->setCurrentIndex(p.model_->findData("gpt"));

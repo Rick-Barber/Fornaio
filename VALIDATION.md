@@ -916,3 +916,30 @@ The release build passes 71 AI test phases (2 opt-in probes skipped), 18 Smart
 fill phases, 5 cloud lifecycle phases, 14 projection phases, 9 general UI phases,
 15 Python worker tests, the integration script, and the core/OptiX/transfer/UV2
 self-tests.
+
+### Release 1.4.2 (November 24, 2026)
+
+AO maximum darkness is checked on both CPU and GPU: the default permits black,
+50% clamps the minimum linear AO value to 0.5 without changing lighter samples,
+and 0% produces white. Tests cover transparent inputs, normalized coverage,
+island padding, preview values, 8/16-bit PNG precision, invalid CLI values, saved
+preferences, and preserving the previous bake until a rebake completes.
+
+The Release build passes the core/OptiX/transfer/UV2, UI, projection, Smart fill,
+and cloud lifecycle suites; the AI suite passes 71 phases with the private-scene
+and real-generation probes skipped. All 15 Python worker tests and the portable
+integration script with development paths removed also pass. The AI download
+resume/checksum fixture requires a local HTTP connection and was run outside the
+sandbox after the sandbox blocked its loopback traffic.
+
+A diagnostic run inadvertently enabled the real-generation probe by setting its
+opt-in variable to `0`. A cloud image was generated, but the installed Codex CLI
+did not return a complete readable candidate to the application. Live inference
+is therefore not covered by the passing offline regression result. The probe now
+requires the documented exact value `FORNAIO_REAL_GPT=1`; other values skip it.
+
+The application and CLI are built directly into `dist/Fornaio`, with compiler
+intermediates and test tools in hidden `.build`. The old `build` directory has
+been removed. Both portable archives and their SHA-256 checksums are verified
+against the current 1.4.2 binaries and source; private files and development
+dependencies remain excluded.

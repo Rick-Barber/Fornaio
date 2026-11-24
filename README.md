@@ -186,6 +186,12 @@ Mirrored UV islands are supported. Overlap warnings identify the first offending
 
 ## Release notes
 
+### 1.4.2
+
+- Add **Max darkness** to AO Bake Settings: 100% keeps the existing black default, 50% limits the darkest AO to gray, and 0% produces white. Lighter values stay unchanged. The saved setting applies to preview, padding, and 8/16-bit PNG exports after rebaking.
+- Add CLI `--max-darkness` (0–1, default 1), with matching CPU/GPU behavior and input validation.
+- Make `dist\Fornaio` the single application output. Every build refreshes the portable app directly; CMake intermediates and development tests stay in hidden `.build`. Packaging archives that same app and refreshes its checksums.
+
 ### 1.4.1
 
 - Accept generated meshes with quantized UVs in AI Texturing: zero-area UV triangles and sliver overlaps (at most 0.1% of a material's UV area) are reported as warnings instead of blocking the mesh. Stacked UV islands and missing, non-finite or out-of-tile UVs are still rejected.
